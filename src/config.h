@@ -1,13 +1,16 @@
 #define WINDOW_TITLE "Chess"
 
-#define FONT_NAME "sans-serif"
-#define FONT_SIZE 14
-//#define FONT_SIZE window_size*14
+extern unsigned char binary_casefont_ttf[];
+extern unsigned int binary_casefont_ttf_len;
 
-#define CHESS_FONT_FILE binary_casefont_ttf
-#define CHESS_FONT_FILE_LEN binary_casefont_ttf_len
-#define CHESS_FONT_SIZE 30
-//#define CHESS_FONT_SIZE window_size*30
+#define LOAD_FONTS()                                            \
+	{                                                           \
+		LOAD_FONT_SYSTEM("sans-serif")                          \
+		LOAD_FONT(binary_casefont_ttf, binary_casefont_ttf_len) \
+	}
+
+#define DEFAULT_FONT(ctx, diagonal) SET_FONT(ctx, 0, (int)(diagonal * 14))
+#define CHESS_FONT(ctx, diagonal) SET_FONT(ctx, 1, (int)(diagonal * 30))
 
 #define TEXT_BLACK_KING "l"
 #define TEXT_BLACK_QUEEN "w"
@@ -31,9 +34,6 @@
 #define TEXT_WHITE_KNIGHT "n"
 #define TEXT_WHITE_PAWN "p"
 */
-
-extern unsigned char CHESS_FONT_FILE[];
-extern unsigned int CHESS_FONT_FILE_LEN;
 
 // you can find some themes in Nuklear/demo/common/style.c
 #define THEME(theme, chess_theme)                                              \

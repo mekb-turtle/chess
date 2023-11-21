@@ -12,6 +12,9 @@
 #include "./config.h"
 #include "./util.h"
 
+struct nk_font *fonts[16][100];
+size_t font_len = 0;
+
 #define WINDOW_MENU "menu"
 #define WINDOW_QUIT "quit"
 #define WINDOW_MAIN "main"
@@ -33,6 +36,10 @@ enum player_mode {
 	PLAYER_VS_COMPUTER,
 	COMPUTER_VS_COMPUTER,
 };
+
+float get_diagonal_size(float x, float y) {
+	return sqrt(x * x + y * y);
+}
 
 int main(int argc, char *argv[]) {
 	// region argument handling
@@ -94,38 +101,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// region font loading
-	struct nk_font *font = NULL;
-	struct nk_font *chess_font = NULL;
-
-	{
-		char *font_file = get_font_file(FONT_NAME);
-		if (!font_file) {
-			warnx("failed to get font: %s", FONT_NAME);
-			goto exit;
-		}
-
-		FILE *font_fp = fopen(font_file, "rb");
-		if (!font_fp) {
-			warnx("failed to open font file: %s", font_file);
-			goto exit;
-		}
-
-		void *font_file_data;
-		size_t font_file_size;
-		if (!read_file(font_fp, &font_file_data, &font_file_size)) {
-			warnx("failed to read file: %s", font_file);
-			fclose(font_fp);
-			goto exit;
-		}
-		fclose(font_fp);
-
-		font = load_font(font_file_data, font_file_size, FONT_SIZE, 1, ctx);
-		nk_style_set_font(ctx, &font->handle);
-
-		chess_font = load_font(CHESS_FONT_FILE, CHESS_FONT_FILE_LEN, CHESS_FONT_SIZE, 1, ctx);
-
-		free(font_file_data);
-	}
+	LOAD_FONTS()
 	// endregion
 
 	// region theme
@@ -167,6 +143,9 @@ int main(int argc, char *argv[]) {
 		struct nk_rect menu_bounds = nk_rect(0, 0, 300, 300);
 		move_rect_to_center(&menu_bounds, window_size);
 
+		float menu_diagonal_size = get_diagonal_size(menu_bounds.w, menu_bounds.h) / 350;
+
+		DEFAULT_FONT(ctx, menu_diagonal_size);
 		switch (game.state) {
 			case PROMOTING:
 				if (nk_begin_titled(ctx, WINDOW_MENU, WINDOW_TITLE,
@@ -237,7 +216,11 @@ int main(int argc, char *argv[]) {
 
 		int grid_w = 4 + BOARD_W;
 		int grid_h = 4 + BOARD_H;
+
 		struct nk_rect main_bounds = get_fit_mode(window_size, nk_vec2(grid_w, grid_h));
+		menu_diagonal_size = get_diagonal_size(main_bounds.w, main_bounds.h) / 600;
+
+		DEFAULT_FONT(ctx, menu_diagonal_size);
 		float grid_item_w = main_bounds.w / (float) grid_w;
 		float grid_item_h = main_bounds.h / (float) grid_h;
 		if (game.state != MENU && main_bounds.w > 0 && main_bounds.h > 0) {
@@ -278,7 +261,7 @@ int main(int argc, char *argv[]) {
 								SET_BUTTON_FG_THEME(ctx->style.button, PIECE_WHITE)
 							}
 
-							nk_style_set_font(ctx, &chess_font->handle);
+							CHESS_FONT(ctx, menu_diagonal_size);
 							if (draw_piece(ctx, piece, true)) {
 								// clicked
 							}
@@ -300,7 +283,7 @@ int main(int argc, char *argv[]) {
 								bounds.h -= margin * 2;
 								nk_layout_space_push(ctx, bounds);
 
-								nk_style_set_font(ctx, &font->handle);
+								DEFAULT_FONT(ctx, menu_diagonal_size);
 								char label[3];
 								sprintf(label, x_label_sides ? "%i" : "%c", x_label_sides ? board_y_max + 1 - y : x - board_x_min + 'A');
 
@@ -320,7 +303,7 @@ int main(int argc, char *argv[]) {
 								nk_label(ctx, label, align);
 							} else if (x_captured_sides || y_captured_sides) {
 								nk_layout_space_push(ctx, bounds);
-								nk_style_set_font(ctx, &chess_font->handle);
+								CHESS_FONT(ctx, menu_diagonal_size);
 
 								struct nk_style style_piece = ctx->style;
 
@@ -349,7 +332,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				game.state = MENU;
 			}
-			nk_style_set_font(ctx, &font->handle);
+			DEFAULT_FONT(ctx, menu_diagonal_size);
 			nk_end(ctx);
 			ctx->style = style;
 		}
