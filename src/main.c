@@ -12,9 +12,6 @@
 #include "./config.h"
 #include "./styling.h"
 
-struct nk_font *fonts[16][100];
-size_t font_len = 0;
-
 #define WINDOW_MENU "menu"
 #define WINDOW_START "start"
 #define WINDOW_MAIN "main"

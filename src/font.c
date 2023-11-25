@@ -67,3 +67,48 @@ bool read_file(FILE *fp, void **data_, size_t *size_) {
 	*size_ = offset;
 	return true;
 }
+
+struct nk_font *fonts[16][100];
+size_t font_len = 0;
+
+void set_font(int index, int font_size, struct nk_context *ctx) {
+	nk_style_set_font(ctx, &fonts[index][font_size - 1]->handle);
+}
+
+bool load_font_data(void *data, size_t size, struct nk_context *ctx) {
+	for (int i = 0; i < 100; ++i) {
+		fonts[font_len][i] = load_font(data, size, i + 1, 1, ctx);
+	}
+	++font_len;
+	return true;
+}
+
+bool load_font_file(char *font_file, struct nk_context *ctx) {
+	FILE *font_fp = fopen(font_file, "rb");
+	if (!font_fp) {
+		warnx("failed to open font file: %s", font_file);
+		return false;
+	}
+
+	void *font_file_data;
+	size_t font_file_size;
+	if (!read_file(font_fp, &font_file_data, &font_file_size)) {
+		warnx("failed to read file: %s", font_file);
+		fclose(font_fp);
+		return false;
+	}
+	fclose(font_fp);
+	bool result = load_font_data(font_file_data, font_file_size, ctx);
+	free(font_file_data);
+	return result;
+}
+
+bool load_font_system(char *font_name, struct nk_context *ctx) {
+	char *font_file = get_font_file(font_name);
+	if (!font_file) {
+		warnx("failed to get font: %s", font_name);
+		return false;
+	}
+
+	return load_font_file(font_file, ctx);
+}

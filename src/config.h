@@ -6,14 +6,14 @@
 extern unsigned char binary_casefont_ttf[];
 extern unsigned int binary_casefont_ttf_len;
 
-#define LOAD_FONTS()                                            \
-	{                                                           \
-		LOAD_FONT_SYSTEM("sans-serif")                          \
-		LOAD_FONT(binary_casefont_ttf, binary_casefont_ttf_len) \
+#define LOAD_FONTS()                                                       \
+	{                                                                      \
+		load_font_system("sans-serif", ctx);                               \
+		load_font_data(binary_casefont_ttf, binary_casefont_ttf_len, ctx); \
 	}
 
-#define DEFAULT_FONT(ctx, diagonal) SET_FONT(ctx, 0, (int) (diagonal * 14))
-#define CHESS_FONT(ctx, diagonal) SET_FONT(ctx, 1, (int) (diagonal * 30))
+#define DEFAULT_FONT(ctx, diagonal) set_font(0, (int) (diagonal * 14), ctx)
+#define CHESS_FONT(ctx, diagonal) set_font(1, (int) (diagonal * 30), ctx)
 
 #define TEXT_BLACK_KING "l"
 #define TEXT_BLACK_QUEEN "w"
@@ -72,17 +72,17 @@ extern unsigned int binary_casefont_ttf_len;
                                                                                \
 		chess_theme[CHESS_COLOR_1] = nk_rgba(160, 160, 160, 255);              \
 		chess_theme[CHESS_COLOR_2] = nk_rgba(185, 140, 80, 255);               \
-		chess_theme[CHESS_COLOR_MOVE1] = nk_rgba(185, 80, 80, 255);           \
+		chess_theme[CHESS_COLOR_MOVE1] = nk_rgba(185, 80, 80, 255);            \
 		chess_theme[CHESS_COLOR_MOVE2] = nk_rgba(140, 185, 80, 255);           \
                                                                                \
 		chess_theme[CHESS_COLOR_1_HOVER] = nk_rgba(147, 147, 147, 255);        \
 		chess_theme[CHESS_COLOR_2_HOVER] = nk_rgba(170, 128, 73, 255);         \
-		chess_theme[CHESS_COLOR_MOVE1_HOVER] = nk_rgba(170, 73, 73, 255);     \
+		chess_theme[CHESS_COLOR_MOVE1_HOVER] = nk_rgba(170, 73, 73, 255);      \
 		chess_theme[CHESS_COLOR_MOVE2_HOVER] = nk_rgba(128, 170, 73, 255);     \
                                                                                \
 		chess_theme[CHESS_COLOR_1_ACTIVE] = nk_rgba(138, 138, 138, 255);       \
 		chess_theme[CHESS_COLOR_2_ACTIVE] = nk_rgba(160, 121, 69, 255);        \
-		chess_theme[CHESS_COLOR_MOVE1_ACTIVE] = nk_rgba(160, 69, 69, 255);    \
+		chess_theme[CHESS_COLOR_MOVE1_ACTIVE] = nk_rgba(160, 69, 69, 255);     \
 		chess_theme[CHESS_COLOR_MOVE2_ACTIVE] = nk_rgba(121, 160, 69, 255);    \
 		chess_theme[CHESS_COLOR_PIECE_BLACK] = nk_rgba(70, 70, 70, 255);       \
 		chess_theme[CHESS_COLOR_PIECE_WHITE] = nk_rgba(225, 225, 225, 255);    \

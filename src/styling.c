@@ -28,4 +28,3 @@ nk_bool draw_piece(struct nk_context *ctx, enum piece_type type, enum piece_colo
 	}
 	return false;
 }
-
