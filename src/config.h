@@ -12,7 +12,7 @@ extern unsigned int binary_casefont_ttf_len;
 		load_font_data(binary_casefont_ttf, binary_casefont_ttf_len, ctx); \
 	}
 
-#define DEFAULT_FONT(ctx, diagonal) set_font(0, (int) (diagonal * 14), ctx)
+#define DEFAULT_FONT(ctx, diagonal) set_font(0, (int) (diagonal * 16), ctx)
 #define CHESS_FONT(ctx, diagonal) set_font(1, (int) (diagonal * 30), ctx)
 
 #define TEXT_BLACK_KING "l"
