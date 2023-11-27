@@ -37,8 +37,9 @@ struct piece {
 // TODO: move this to main.c
 struct game {
 	enum piece_color turn;
-	enum piece_color bottom_color;
-	pos last_moved;
+	bool started;
+	bool flipped;
+	move last_move;
 	struct piece board[BOARD_W][BOARD_H];
 	enum piece_type white_pieces_captured[20];
 	enum piece_type black_pieces_captured[20];
@@ -46,15 +47,16 @@ struct game {
 };
 
 struct move_details {
-	bool check;         // whether we are checking if the king is in check
-	bool capture;       // capturing a piece
-	bool en_passant;    // https://chess.com/terms/en-passant
-	bool castle;        // switching around the king and rook
-	bool promotion;     // promoting a pawn to a queen, knight, bishop, or rook
+	bool check;      // whether we are checking if the king is in check
+	bool capture;    // capturing a piece
+	bool en_passant; // https://chess.com/terms/en-passant
+	bool castle;     // switching around the king and rook
+	bool promotion;  // promoting a pawn to a queen, knight, bishop, or rook
 };
 
 bool pos_is_valid(pos position);
-void start_game(struct game *game, enum piece_color bottom_color);
+void start_game(struct game *game, bool flipped);
+pos get_view_pos(struct game *game, pos position);
 struct piece *get_piece(struct game *game, pos position);
 bool is_check(struct game *game, enum piece_color color);
 bool is_checkmate(struct game *game, enum piece_color color);

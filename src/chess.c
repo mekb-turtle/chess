@@ -7,14 +7,15 @@
 	struct move_details details_ = {0}; \
 	if (!details) details = &details_;
 
-void start_game(struct game *game, enum piece_color bottom_color) {
+void start_game(struct game *game, bool flipped) {
+	game->flipped = flipped;
 	game->turn = WHITE;
-	game->bottom_color = bottom_color;
 	game->winner = NONE;
+	game->started = false;
 
-	// last moved piece
-	game->last_moved.x = 0;
-	game->last_moved.y = 0;
+	// last move
+	game->last_move.from.x = game->last_move.from.y =
+	        game->last_move.to.x = game->last_move.to.y = 0;
 
 	// reset captured pieces (NONE denotes end of array so we only need to set first)
 	game->white_pieces_captured[0] = NONE;
@@ -28,11 +29,11 @@ void start_game(struct game *game, enum piece_color bottom_color) {
 			piece->turns = 0;
 
 			// set color and which direction pawns move
-			piece->color = y < 4 ? bottom_color : OPPOSITE(bottom_color);
+			piece->color = y < 4 ? WHITE : BLACK;
 
-			if (y == 1 || y == 6) {
+			if (y == 1 || y == BOARD_H - 2) {
 				piece->type = PAWN;
-			} else if (y == 0 || y == 7) {
+			} else if (y == 0 || y == BOARD_H - 1) {
 				switch (x) {
 					case 0:
 					case 7:
@@ -68,6 +69,14 @@ void add_captured(enum piece_type array[], enum piece_type piece) {
 bool pos_is_valid(pos position) {
 	return position.x >= 0 && position.x < BOARD_W &&
 	       position.y >= 0 && position.y < BOARD_H;
+}
+
+pos get_view_pos(struct game *game, pos position) {
+	if (game->flipped) {
+		position.x = BOARD_W - position.x - 1;
+		position.y = BOARD_H - position.y - 1;
+	}
+	return position;
 }
 
 struct piece *get_piece(struct game *game, pos position) {
@@ -161,7 +170,7 @@ bool is_stalemate(struct game *game, enum piece_color color) {
 }
 
 pos pos_dir(struct game *game, struct piece piece) {
-	return position(0, game->bottom_color ^ piece.color ? -1 : 1);
+	return position(0, piece.color ? -1 : 1);
 }
 
 bool is_clear_path(struct game *game, move move) {
@@ -195,12 +204,14 @@ bool is_legal_move_internal(struct game *game, move move, struct move_details *d
 	pos direction = pos_direction(move.from, move.to); // get direction
 
 	if (is_piece(*piece_to, piece_from->color)) {
-		if ((piece_from->type == ROOK && piece_to->type == KING) || (piece_from->type == KING && piece_to->type == ROOK))
-			if (!details->check && !is_check(game, piece_from->color))
-				if (is_clear_path(game, move)) {
-					details->castle = true;
-					goto validate_move;
-				}
+		// castling
+		if (piece_from->type == KING && piece_to->type == ROOK)
+			if (piece_from->turns == 0 && piece_to->turns == 0)            // cannot castle if the king or rook has moved
+				if (!details->check && !is_check(game, piece_from->color)) // don't allow escaping from check
+					if (is_clear_path(game, move)) {                       // castling only works if there are no spaces between the king and rook
+						details->castle = true;
+						goto validate_move;
+					}
 		return false;
 	}
 
@@ -226,23 +237,22 @@ bool is_legal_move_internal(struct game *game, move move, struct move_details *d
 			    (abs_distance.x == 2 && abs_distance.y == 1)) goto validate_move;
 			return false;
 		case PAWN:
-			bool taking_piece = piece_to->type != NONE;
-			if (!taking_piece) {
+			details->capture = piece_to->type != NONE;
+			if (!details->capture) {
 				// en passant
-				struct piece *last_moved_piece = get_piece(game, game->last_moved);
-				if (last_moved_piece->type == PAWN &&
-				    last_moved_piece->color != piece_from->color &&
-				    last_moved_piece->turns == 1) {
-					// destination position has same column, initial positon has same row
-					if (game->last_moved.x == move.to.x && game->last_moved.y == move.from.y) {
-						details->en_passant = true;
-						details->capture = true;
-						taking_piece = true;
-					}
+				struct piece *last_moved_piece = get_piece(game, game->last_move.to);
+				pos last_move_distance = pos_abs(pos_subtract(game->last_move.to, game->last_move.from));
+				if (last_moved_piece->type == PAWN &&               // only capture a pawn
+				    last_moved_piece->color != piece_from->color && // only capture opponent piece
+				    last_moved_piece->turns == 1 &&                 // pawn has only moved once
+				    last_move_distance.y == 2 &&                    // pawn has moved two spaces, not one
+				    game->last_move.to.x == move.to.x &&            // destination position has same column
+				    game->last_move.to.y == move.from.y) {          // and initial position has same row
+					details->en_passant = details->capture = true;
 				}
 			}
 
-			if (taking_piece) {
+			if (details->capture) {
 				// if we are taking a piece, return false if we are not moving to the neighboring column
 				if (move.to.x + 1 != move.from.x &&
 				    move.to.x - 1 != move.from.x) return false;
@@ -319,11 +329,12 @@ void make_piece_move(struct game *game, move move, struct move_details details) 
 
 	if (details.en_passant) {
 		// take the other player's pawn
-		struct piece *piece_last_moved = get_piece(game, game->last_moved);
+		struct piece *piece_last_moved = get_piece(game, game->last_move.to);
 		piece_last_moved->type = NONE;
 	}
 
-	game->last_moved = move.to;
+	game->started = true;
+	game->last_move = move;
 
 	game->turn = OPPOSITE(game->turn);
 }

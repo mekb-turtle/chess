@@ -172,30 +172,38 @@ int main(int argc, char *argv[]) {
 							struct nk_rect tile_bounds = nk_rect(grid_item.x * x, grid_item.y * y, grid_item.x, grid_item.y);
 							nk_layout_space_push(ctx, tile_bounds);
 
-							pos pos = {x - board_min.x, board_max.y - y};
+							pos pos = get_view_pos(&game, position(x - board_min.x, board_max.y - y));
 
-							struct piece piece = game.board[pos.x][pos.y];
+							struct piece *piece = get_piece(&game, pos);
+
+							struct move_details details;
 
 							if (pos_equal_opt1(pos, current_move.from)) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE1)
+								SET_BUTTON_BG_THEME(ctx->style.button, MOVE)
 							} else if (pos_equal_opt1(pos, current_move.to)) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE1)
-							} else if (current_move.from.has_value && is_legal_move(&game, movement(current_move.from.value, pos), NULL)) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE2)
+								SET_BUTTON_BG_THEME(ctx->style.button, MOVE)
+							} else if (current_move.from.has_value && is_legal_move(&game, movement(current_move.from.value, pos), &details)) {
+								if (details.capture) {
+									SET_BUTTON_BG_THEME(ctx->style.button, MOVE_CAPTURE)
+								} else {
+									SET_BUTTON_BG_THEME(ctx->style.button, MOVE_AVAILABLE)
+								}
+							} else if (game.started && (pos_equal(game.last_move.to, pos) || pos_equal(game.last_move.from, pos))) {
+								SET_BUTTON_BG_THEME(ctx->style.button, MOVE_LAST)
 							} else if ((pos.x + pos.y) & 1) {
 								SET_BUTTON_BG_THEME(ctx->style.button, 2)
 							} else {
 								SET_BUTTON_BG_THEME(ctx->style.button, 1)
 							}
 
-							if (piece.color == BLACK) {
+							if (piece->color == BLACK) {
 								SET_BUTTON_FG_THEME(ctx->style.button, PIECE_BLACK)
 							} else {
 								SET_BUTTON_FG_THEME(ctx->style.button, PIECE_WHITE)
 							}
 
 							CHESS_FONT(ctx, main_diagonal_size);
-							if (draw_piece(ctx, piece.type, piece.color, true) && game.winner == NO_WINNER && !clicked) {
+							if (draw_piece(ctx, piece->type, piece->color, true) && game.winner == NO_WINNER && !clicked) {
 								is_promoting = false;
 								clicked = true;
 								struct move_details details = {0};
@@ -242,7 +250,7 @@ int main(int argc, char *argv[]) {
 								nk_layout_space_push(ctx, bounds);
 
 								// draw grid labels
-								DEFAULT_FONT(ctx, main_diagonal_size);
+								AXIS_FONT(ctx, main_diagonal_size);
 								char label[3];
 								sprintf(label, x_label_sides ? "%i" : "%c", x_label_sides ? board_max.y - y + 1 : x - board_min.x + 'A');
 
@@ -298,9 +306,8 @@ int main(int argc, char *argv[]) {
 				menu_bounds.h = fminf(fmaxf(menu_bounds.h, 360), window_size.y);
 
 				move_rect_to_center(&menu_bounds, window_size);
-				float menu_diagonal_size = get_diagonal_size(menu_bounds.w, menu_bounds.h) / 600;
 				nk_window_set_bounds(ctx, WINDOW_MENU, menu_bounds);
-				DEFAULT_FONT(ctx, menu_diagonal_size);
+				MENU_FONT(ctx, main_diagonal_size);
 				if (nk_begin_titled(ctx, WINDOW_MENU, WINDOW_TITLE,
 				                    menu_bounds,
 				                    NK_WINDOW_BORDER | NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR)) {
@@ -334,18 +341,22 @@ int main(int argc, char *argv[]) {
 					float margin = grid_item.x * 0.1;
 					ctx->style = style_board;
 
+					MENU_FONT(ctx, main_diagonal_size);
+
 					struct nk_rect menu_bounds = {0};
 					menu_bounds.w = grid_item.x * 2 + margin * 3 + ctx->style.window.border;
 					menu_bounds.h = grid_item.y * 2 + margin * 3 + ctx->style.window.border;
+
+					// add window header size
+					menu_bounds.h += ctx->style.font->height + 2.0f * ctx->style.window.header.padding.y;
+					menu_bounds.h += 2.0f * ctx->style.window.header.label_padding.y;
+
 					move_rect_to_center(&menu_bounds, window_size);
 
 					if (current_move.to.value.y < 4) {
 						menu_bounds.y += grid_item.y * 1;
 					}
 
-					float menu_diagonal_size = get_diagonal_size(menu_bounds.w, menu_bounds.h) / 600;
-					nk_window_set_bounds(ctx, WINDOW_MENU, menu_bounds);
-					DEFAULT_FONT(ctx, menu_diagonal_size);
 					nk_window_set_bounds(ctx, WINDOW_MENU, menu_bounds);
 
 					if (nk_begin_titled(ctx, WINDOW_MENU, PROMOTING_WINDOW_TITLE,
@@ -403,7 +414,7 @@ int main(int argc, char *argv[]) {
 					}
 					nk_end(ctx);
 					ctx->style = style_normal;
-					DEFAULT_FONT(ctx, menu_diagonal_size);
+					MENU_FONT(ctx, main_diagonal_size);
 				}
 			}
 		}
@@ -413,9 +424,8 @@ int main(int argc, char *argv[]) {
 			menu_bounds.h = fminf(fmaxf(menu_bounds.h, 360), window_size.y);
 
 			move_rect_to_center(&menu_bounds, window_size);
-			float menu_diagonal_size = get_diagonal_size(menu_bounds.w, menu_bounds.h) / 600;
 			nk_window_set_bounds(ctx, WINDOW_MENU, menu_bounds);
-			DEFAULT_FONT(ctx, menu_diagonal_size);
+			MENU_FONT(ctx, main_diagonal_size);
 			if (nk_begin_titled(ctx, WINDOW_START, WINDOW_TITLE,
 			                    menu_bounds,
 			                    NK_WINDOW_BORDER | NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR)) {
@@ -442,21 +452,21 @@ int main(int argc, char *argv[]) {
 				// draw button
 				nk_layout_row_dynamic(ctx, 0, 1);
 				if (nk_button_label(ctx, "Start")) {
-					enum piece_color bottom;
+					bool flipped;
 					switch (player_color) {
 						case PLAYER_WHITE:
-							bottom = WHITE;
+							flipped = false;
 							break;
 						case PLAYER_BLACK:
-							bottom = BLACK;
+							flipped = true;
 							break;
 						default:
 							srand(time(NULL));
-							bottom = rand() & 1 ? WHITE : BLACK;
+							flipped = rand() & 1;
 							break;
 					}
 					// start game
-					start_game(&game, bottom);
+					start_game(&game, flipped);
 					current_move.from.has_value = false;
 					is_playing = true;
 					is_promoting = false;
