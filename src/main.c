@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 								SET_BUTTON_BG_THEME(ctx->style.button, MOVE1)
 							} else if (pos_equal_opt1(pos, current_move.to)) {
 								SET_BUTTON_BG_THEME(ctx->style.button, MOVE1)
-							} else if (current_move.from.has_value && is_legal_move(&game, movement(current_move.from.value, pos))) {
+							} else if (current_move.from.has_value && is_legal_move(&game, movement(current_move.from.value, pos), NULL)) {
 								SET_BUTTON_BG_THEME(ctx->style.button, MOVE2)
 							} else if ((pos.x + pos.y) & 1) {
 								SET_BUTTON_BG_THEME(ctx->style.button, 2)
@@ -198,13 +198,13 @@ int main(int argc, char *argv[]) {
 							if (draw_piece(ctx, piece.type, piece.color, true) && game.winner == NO_WINNER && !clicked) {
 								is_promoting = false;
 								clicked = true;
+								struct move_details details = {0};
 								// clicked tile
-								enum move_result result;
 								if (pos_equal_opt1(pos, current_move.from)) {
 									// cancel moving if we clicked the tile we're moving from
 									current_move.from.has_value = false;
-								} else if (current_move.from.has_value && (result = move_piece(&game, movement(current_move.from.value, pos)))) {
-									if (result == PROMOTION) {
+								} else if (current_move.from.has_value && move_piece(&game, movement(current_move.from.value, pos), &details)) {
+									if (game.winner == NO_WINNER && details.promotion) {
 										// open the dialog
 										current_move.to.value = pos;
 										current_move.to.has_value = true;
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
 										// cancel moving after we've moved
 										current_move.from.has_value = false;
 									}
-								} else if (is_legal_move(&game, movement(pos, pos))) {
+								} else if (is_legal_move(&game, movement(pos, pos), NULL)) {
 									// set the piece we're moving
 									current_move.from.value = pos;
 									current_move.from.has_value = true;
@@ -388,7 +388,7 @@ int main(int argc, char *argv[]) {
 							clicked = true;
 							is_promoting = false;
 							current_move.to.has_value = false;
-							if (move_piece_promote(&game, (struct move){.from = current_move.from.value, .to = current_move.to.value}, type)) {
+							if (move_piece_promote(&game, (struct move){.from = current_move.from.value, .to = current_move.to.value}, NULL, type)) {
 								current_move.from.has_value = false;
 							}
 						}

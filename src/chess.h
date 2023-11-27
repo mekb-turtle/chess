@@ -45,19 +45,20 @@ struct game {
 	enum winner winner;
 };
 
-enum move_result {
-	DISALLOWED,
-	ALLOWED,
-	PROMOTION
+struct move_details {
+	bool check;         // whether we are checking if the king is in check
+	bool capture;       // capturing a piece
+	bool en_passant;    // https://chess.com/terms/en-passant
+	bool castle;        // switching around the king and rook
+	bool promotion;     // promoting a pawn to a queen, knight, bishop, or rook
 };
 
 bool pos_is_valid(pos position);
 void start_game(struct game *game, enum piece_color bottom_color);
-void add_captured(enum piece_type array[], enum piece_type piece);
 struct piece *get_piece(struct game *game, pos position);
 bool is_check(struct game *game, enum piece_color color);
 bool is_checkmate(struct game *game, enum piece_color color);
-enum move_result is_legal_move(struct game *game, move move);
-enum move_result move_piece_promote(struct game *game, move move, enum piece_type type);
-enum move_result move_piece(struct game *game, move move);
+bool is_legal_move(struct game *game, move move, struct move_details *details);
+bool move_piece_promote(struct game *game, move move, struct move_details *details, enum piece_type type);
+bool move_piece(struct game *game, move move, struct move_details *details);
 #endif //CHESS_H

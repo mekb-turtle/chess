@@ -3,6 +3,10 @@
 
 #define OPPOSITE(x) (x == WHITE ? BLACK : WHITE)
 
+#define DETAILS(details)                \
+	struct move_details details_ = {0}; \
+	if (!details) details = &details_;
+
 void start_game(struct game *game, enum piece_color bottom_color) {
 	game->turn = WHITE;
 	game->bottom_color = bottom_color;
@@ -71,19 +75,13 @@ struct piece *get_piece(struct game *game, pos position) {
 	return &game->board[position.x][position.y];
 }
 
-void copy_piece(struct piece *from, struct piece *to) {
-	to->type = from->type;
-	to->color = from->color;
-	to->turns = from->turns;
-}
-
 bool is_piece(struct piece piece, enum piece_color color) {
 	return piece.type != NONE && piece.color == color;
 }
 
-enum move_result is_legal_move_internal(struct game *game, move move);
-enum move_result move_piece_internal(struct game *game, move move);
-void make_piece_move(struct game *game, move move);
+bool is_legal_move_internal(struct game *game, move move, struct move_details *details);
+bool move_piece_internal(struct game *game, move move, struct move_details *details);
+void make_piece_move(struct game *game, move move, struct move_details details);
 
 bool is_check(struct game *game, enum piece_color color) {
 	// find king piece
@@ -98,15 +96,17 @@ bool is_check(struct game *game, enum piece_color color) {
 		}
 	return true;
 
+	struct move_details details = {0};
+	details.check = true;
+
 found_king:
-	enum piece_color opponent_color = OPPOSITE(color);
 	for (intpos x = 0; x < BOARD_W; ++x)
 		for (intpos y = 0; y < BOARD_H; ++y) {
 			pos piece_position = position(x, y);
 			struct piece *piece = get_piece(game, piece_position);
 			// if the king piece can be taken by any opponent piece
-			if (piece->color == opponent_color)
-				if (is_legal_move_internal(game, (struct move){.from = piece_position, .to = king_position}))
+			if (piece->color != color)
+				if (is_legal_move_internal(game, (struct move){.from = piece_position, .to = king_position}, &details))
 					return true;
 		}
 
@@ -129,7 +129,7 @@ bool is_checkmate(struct game *game, enum piece_color color) {
 						pos new_position = position(x2, y2);
 						struct game next_state = *game;
 						// don't check for checkmate to prevent crash from infinite recursion
-						if (move_piece_internal(&next_state, (struct move){.from = piece_position, .to = new_position})) {
+						if (move_piece_internal(&next_state, (struct move){.from = piece_position, .to = new_position}, NULL)) {
 							// if the move gets the player out of check, it is not a checkmate
 							if (!is_check(&next_state, color)) return false;
 						}
@@ -152,8 +152,7 @@ bool is_stalemate(struct game *game, enum piece_color color) {
 				for (intpos x2 = 0; x2 < BOARD_W; ++x2)
 					for (intpos y2 = 0; y2 < BOARD_H; ++y2) {
 						pos new_position = position(x2, y2);
-						struct game next_state = *game;
-						if (is_legal_move_internal(&next_state, (struct move){.from = piece_position, .to = new_position}))
+						if (is_legal_move_internal(game, (struct move){.from = piece_position, .to = new_position}, NULL))
 							return false;
 					}
 			}
@@ -165,7 +164,21 @@ pos pos_dir(struct game *game, struct piece piece) {
 	return position(0, game->bottom_color ^ piece.color ? -1 : 1);
 }
 
-enum move_result is_legal_move_internal(struct game *game, move move) {
+bool is_clear_path(struct game *game, move move) {
+	pos direction = pos_direction(move.from, move.to); // get direction
+	if (direction.x == 0 && direction.y == 0) return false;
+	// loop over all tiles from initial position to destination position
+	for (pos line_pos = pos_add(move.from, direction);
+	     true; line_pos = pos_add(line_pos, direction)) {
+		struct piece *piece_line = get_piece(game, line_pos);
+		if (!piece_line) break;
+		if (pos_equal(line_pos, move.to)) return true;
+		if (piece_line->type != NONE) break;
+	}
+	return false;
+}
+
+bool is_legal_move_internal(struct game *game, move move, struct move_details *details) {
 	if (pos_equal(move.from, move.to)) return false;
 
 	struct piece *piece_from = get_piece(game, move.from);
@@ -174,25 +187,28 @@ enum move_result is_legal_move_internal(struct game *game, move move) {
 	if (!piece_from) return false;
 	if (!piece_to) return false;
 
+	DETAILS(details);
+	details->capture = details->en_passant = details->castle = details->promotion = false;
+
 	pos distance = pos_subtract(move.to, move.from);
 	pos abs_distance = pos_abs(distance);              // absolute value
-	pos direction = pos_direction(move.from, move.to); // gets direction
+	pos direction = pos_direction(move.from, move.to); // get direction
 
 	if (is_piece(*piece_to, piece_from->color)) {
-		if (piece_from->type != KING && piece_from->type != ROOK)
-			return false;
-		// TODO: castling
+		if ((piece_from->type == ROOK && piece_to->type == KING) || (piece_from->type == KING && piece_to->type == ROOK))
+			if (!details->check && !is_check(game, piece_from->color))
+				if (is_clear_path(game, move)) {
+					details->castle = true;
+					goto validate_move;
+				}
 		return false;
 	}
 
-	struct game next_state = *game;
-	make_piece_move(&next_state, move);
-	if (is_check(&next_state, piece_from->color)) return false;
-
 	switch (piece_from->type) {
 		case KING:
-			// return true if the new position is a neighbor of the initial position
-			return pos_equal(distance, pos_normalize(distance));
+			// return true if the destination position is a neighbor of the initial position
+			if (pos_equal(distance, pos_normalize(distance))) goto validate_move;
+			return false;
 		case ROOK:
 			// rook: return false if direction is not horizontal or vertical
 			if (direction.x != 0 && direction.y != 0) return false;
@@ -202,24 +218,31 @@ enum move_result is_legal_move_internal(struct game *game, move move) {
 				if (direction.x == 0 || direction.y == 0) return false;
 			}
 		case QUEEN:
-			// queen: return false if direction is not a straight line
-			if (direction.x == 0 && direction.y == 0) return false;
-			// applies to queen, rook, and bishop
-			// loop over all tiles from intial position to new position
-			for (pos line_pos = pos_add(move.from, direction);
-			     true; line_pos = pos_add(line_pos, direction)) {
-				struct piece *piece_line = get_piece(game, line_pos);
-				if (!piece_line) break;
-				if (pos_equal(line_pos, move.to)) return true;
-				if (piece_line->type != NONE) break;
-			}
+			if (is_clear_path(game, move)) goto validate_move;
 			return false;
 		case KNIGHT:
 			// return true if distance is 1x2 or 2x1
-			return (abs_distance.x == 1 && abs_distance.y == 2) ||
-			       (abs_distance.x == 2 && abs_distance.y == 1);
+			if ((abs_distance.x == 1 && abs_distance.y == 2) ||
+			    (abs_distance.x == 2 && abs_distance.y == 1)) goto validate_move;
+			return false;
 		case PAWN:
-			if (piece_to->type != NONE) {
+			bool taking_piece = piece_to->type != NONE;
+			if (!taking_piece) {
+				// en passant
+				struct piece *last_moved_piece = get_piece(game, game->last_moved);
+				if (last_moved_piece->type == PAWN &&
+				    last_moved_piece->color != piece_from->color &&
+				    last_moved_piece->turns == 1) {
+					// destination position has same column, initial positon has same row
+					if (game->last_moved.x == move.to.x && game->last_moved.y == move.from.y) {
+						details->en_passant = true;
+						details->capture = true;
+						taking_piece = true;
+					}
+				}
+			}
+
+			if (taking_piece) {
 				// if we are taking a piece, return false if we are not moving to the neighboring column
 				if (move.to.x + 1 != move.from.x &&
 				    move.to.x - 1 != move.from.x) return false;
@@ -242,18 +265,25 @@ enum move_result is_legal_move_internal(struct game *game, move move) {
 			}
 
 			if (move.to.y == (dir.y < 0 ? 0 : BOARD_H - 1)) {
-				return PROMOTION; // promote the pawn once it reaches the other side of the board
+				// promote the pawn once it reaches the other side of the board
+				details->promotion = true;
 			}
 
-			// TODO: en passant
-			return true;
+			goto validate_move;
 		default:
 			return false;
 	}
+
+validate_move:
+	struct game next_state = *game;
+	make_piece_move(&next_state, move, *details);
+	if (is_check(&next_state, piece_from->color)) return false;
+	if (piece_to->type != NONE && !details->castle) details->capture = true;
+	return true;
 }
 
-enum move_result is_legal_move(struct game *game, move move) {
-	if (game->winner != NO_WINNER) return DISALLOWED;
+bool is_legal_move(struct game *game, move move, struct move_details *details) {
+	if (game->winner != NO_WINNER) return false;
 
 	struct piece *piece_from = get_piece(game, move.from);
 	if (!piece_from) return false;
@@ -265,16 +295,16 @@ enum move_result is_legal_move(struct game *game, move move) {
 		// check that the piece can move somewhere
 		for (intpos x = 0; x < BOARD_W; ++x)
 			for (intpos y = 0; y < BOARD_H; ++y) {
-				enum move_result result = is_legal_move_internal(game, (struct move){.from = move.from, .to = position(x, y)});
-				if (result != DISALLOWED) return result;
+				if (is_legal_move_internal(game, (struct move){.from = move.from, .to = position(x, y)}, NULL))
+					return true;
 			}
 		return false;
 	}
 
-	return is_legal_move_internal(game, move);
+	return is_legal_move_internal(game, move, details);
 }
 
-void make_piece_move(struct game *game, move move) {
+void make_piece_move(struct game *game, move move, struct move_details details) {
 	struct piece *piece_from = get_piece(game, move.from);
 	struct piece *piece_to = get_piece(game, move.to);
 
@@ -282,21 +312,37 @@ void make_piece_move(struct game *game, move move) {
 	if (piece_from->turns < 2) ++piece_from->turns;
 
 	// move the piece, TODO: castling and en passant
-	copy_piece(piece_from, piece_to);
+	piece_to->type = piece_from->type;
+	piece_to->color = piece_from->color;
+	piece_to->turns = piece_from->turns;
 	piece_from->type = NONE;
+
+	if (details.en_passant) {
+		// take the other player's pawn
+		struct piece *piece_last_moved = get_piece(game, game->last_moved);
+		piece_last_moved->type = NONE;
+	}
 
 	game->last_moved = move.to;
 
 	game->turn = OPPOSITE(game->turn);
 }
 
-enum move_result move_piece_promote_internal(struct game *game, move move, enum piece_type type) {
+bool move_piece_internal(struct game *game, move move, struct move_details *details) {
 	if (pos_equal(move.from, move.to)) return false;
-	enum move_result result = is_legal_move(game, move);
-	switch (result) {
-		case DISALLOWED:
-			break;
-		case PROMOTION:
+	DETAILS(details);
+	if (is_legal_move(game, move, details)) {
+		if (!details->promotion) make_piece_move(game, move, *details);
+		return true;
+	}
+	return false;
+}
+
+bool move_piece_promote_internal(struct game *game, move move, struct move_details *details, enum piece_type type) {
+	if (pos_equal(move.from, move.to)) return false;
+	DETAILS(details);
+	if (is_legal_move(game, move, details)) {
+		if (details->promotion) {
 			switch (type) {
 				case QUEEN:
 				case KNIGHT:
@@ -306,28 +352,13 @@ enum move_result move_piece_promote_internal(struct game *game, move move, enum 
 					piece_from->type = type;
 					break;
 				default:
-					return DISALLOWED;
+					return false;
 			}
-		default:
-			make_piece_move(game, move);
-			break;
+		}
+		make_piece_move(game, move, *details);
+		return true;
 	}
-	return result;
-}
-
-enum move_result move_piece_internal(struct game *game, move move) {
-	if (pos_equal(move.from, move.to)) return false;
-	enum move_result result = is_legal_move(game, move);
-	switch (result) {
-		case DISALLOWED:
-			break;
-		case PROMOTION:
-			break;
-		default:
-			make_piece_move(game, move);
-			break;
-	}
-	return result;
+	return false;
 }
 
 //TODO: other ways of a draw
@@ -341,18 +372,18 @@ void check_game_win_condition(struct game *game) {
 	if (is_stalemate(game, BLACK)) game->winner = STALEMATE;
 }
 
-enum move_result move_piece_promote(struct game *game, move move, enum piece_type type) {
-	enum move_result result = move_piece_promote_internal(game, move, type);
-	if (result != DISALLOWED) {
+bool move_piece_promote(struct game *game, move move, struct move_details *details, enum piece_type type) {
+	if (move_piece_promote_internal(game, move, details, type)) {
 		check_game_win_condition(game);
+		return true;
 	}
-	return result;
+	return false;
 }
 
-enum move_result move_piece(struct game *game, move move) {
-	enum move_result result = move_piece_internal(game, move);
-	if (result != DISALLOWED) {
+bool move_piece(struct game *game, move move, struct move_details *details) {
+	if (move_piece_internal(game, move, details)) {
 		check_game_win_condition(game);
+		return true;
 	}
-	return result;
+	return false;
 }
