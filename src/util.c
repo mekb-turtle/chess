@@ -20,11 +20,15 @@ bool pos_equal_opt2(opt_pos a, opt_pos b) {
 	return a.has_value && b.has_value && pos_equal(a.value, b.value);
 }
 
-pos pos_normalize(pos position) {
-	if (position.x < -1) position.x = -1;
-	if (position.x > 1) position.x = 1;
-	if (position.y < -1) position.y = -1;
-	if (position.y > 1) position.y = 1;
+intpos intpos_sign(intpos position) {
+	if (position < -1) position = -1;
+	if (position > 1) position = 1;
+	return position;
+}
+
+pos pos_sign(pos position) {
+	position.x = intpos_sign(position.x);
+	position.y = intpos_sign(position.y);
 	return position;
 }
 
@@ -46,7 +50,7 @@ pos pos_direction(pos a, pos b) {
 	pos distance = pos_subtract(b, a);
 	if (distance.x == distance.y || distance.x == -distance.y ||
 	    distance.x == 0 || distance.y == 0) {
-		return pos_normalize(distance);
+		return pos_sign(distance);
 	}
 	return position(0, 0);
 }

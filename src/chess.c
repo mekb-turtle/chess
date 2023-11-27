@@ -177,8 +177,8 @@ bool is_clear_path(struct game *game, move move) {
 	pos direction = pos_direction(move.from, move.to); // get direction
 	if (direction.x == 0 && direction.y == 0) return false;
 	// loop over all tiles from initial position to destination position
-	for (pos line_pos = pos_add(move.from, direction);
-	     true; line_pos = pos_add(line_pos, direction)) {
+	for (pos line_pos = pos_add(move.from, direction); true;
+	     line_pos = pos_add(line_pos, direction)) {
 		struct piece *piece_line = get_piece(game, line_pos);
 		if (!piece_line) break;
 		if (pos_equal(line_pos, move.to)) return true;
@@ -218,7 +218,7 @@ bool is_legal_move_internal(struct game *game, move move, struct move_details *d
 	switch (piece_from->type) {
 		case KING:
 			// return true if the destination position is a neighbor of the initial position
-			if (pos_equal(distance, pos_normalize(distance))) goto validate_move;
+			if (pos_equal(distance, pos_sign(distance))) goto validate_move;
 			return false;
 		case ROOK:
 			// rook: return false if direction is not horizontal or vertical
@@ -285,10 +285,10 @@ bool is_legal_move_internal(struct game *game, move move, struct move_details *d
 	}
 
 validate_move:
+	if (piece_to->type != NONE && !details->castle) details->capture = true;
 	struct game next_state = *game;
 	make_piece_move(&next_state, move, *details);
 	if (is_check(&next_state, piece_from->color)) return false;
-	if (piece_to->type != NONE && !details->castle) details->capture = true;
 	return true;
 }
 
@@ -314,6 +314,12 @@ bool is_legal_move(struct game *game, move move, struct move_details *details) {
 	return is_legal_move_internal(game, move, details);
 }
 
+void copy_piece(struct piece *source, struct piece *destination) {
+	destination->type = source->type;
+	destination->color = source->color;
+	destination->turns = source->turns;
+}
+
 void make_piece_move(struct game *game, move move, struct move_details details) {
 	struct piece *piece_from = get_piece(game, move.from);
 	struct piece *piece_to = get_piece(game, move.to);
@@ -321,16 +327,34 @@ void make_piece_move(struct game *game, move move, struct move_details details) 
 	// increment number of turns
 	if (piece_from->turns < 2) ++piece_from->turns;
 
-	// move the piece, TODO: castling and en passant
-	piece_to->type = piece_from->type;
-	piece_to->color = piece_from->color;
-	piece_to->turns = piece_from->turns;
-	piece_from->type = NONE;
+	if (details.castle) {
+		pos step = pos_sign(pos_subtract(move.to, move.from));
 
-	if (details.en_passant) {
-		// take the other player's pawn
-		struct piece *piece_last_moved = get_piece(game, game->last_move.to);
-		piece_last_moved->type = NONE;
+		// get the two positions next to the king
+		pos pos1 = pos_add(move.from, step);
+		pos pos2 = pos_add(pos1, step);
+		struct piece *piece1 = get_piece(game, pos1);
+		struct piece *piece2 = get_piece(game, pos2);
+
+		// move from (king) to piece2 (closer to the rook) and to (rook) to piece1 (closer to the king)
+		struct piece temp;
+		copy_piece(piece_from, &temp);
+		copy_piece(piece_to, piece1);
+		copy_piece(&temp, piece2);
+
+		piece_from->type = NONE;
+		piece_to->type = NONE;
+
+		move.to = pos2;
+	} else {
+		copy_piece(piece_from, piece_to);
+		piece_from->type = NONE;
+
+		if (details.en_passant) {
+			// take the other player's pawn
+			struct piece *piece_last_moved = get_piece(game, game->last_move.to);
+			piece_last_moved->type = NONE;
+		}
 	}
 
 	game->started = true;
