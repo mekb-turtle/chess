@@ -68,15 +68,20 @@ bool read_file(FILE *fp, void **data_, size_t *size_) {
 	return true;
 }
 
-struct nk_font *fonts[16][100];
+#define MAX_FONT_SIZE 100
+
+struct nk_font *fonts[16][MAX_FONT_SIZE];
 size_t font_len = 0;
 
-void set_font(int index, int font_size, struct nk_context *ctx) {
-	nk_style_set_font(ctx, &fonts[index][font_size - 1]->handle);
+void set_font(int font_index, int font_size, struct nk_context *ctx) {
+	int size_index = font_size - 1;
+	if (size_index < 0) size_index = 0;
+	if (size_index > MAX_FONT_SIZE - 1) size_index = MAX_FONT_SIZE - 1;
+	nk_style_set_font(ctx, &fonts[font_index][size_index]->handle);
 }
 
 bool load_font_data(void *data, size_t size, struct nk_context *ctx) {
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < MAX_FONT_SIZE; ++i) {
 		fonts[font_len][i] = load_font(data, size, i + 1, 1, ctx);
 	}
 	++font_len;

@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 							SET_BUTTON_BG_THEME(ctx->style.button, 1)
 						}
 
-						CHESS_FONT(ctx, menu_diagonal_size);
+						CHESS_FONT(ctx, main_diagonal_size);
 
 						nk_layout_space_begin(ctx, NK_STATIC, INT_MAX, INT_MAX);
 
