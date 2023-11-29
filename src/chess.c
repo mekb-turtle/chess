@@ -177,7 +177,7 @@ bool is_clear_path(struct game *game, move move) {
 	pos direction = pos_direction(move.from, move.to); // get direction
 	if (direction.x == 0 && direction.y == 0) return false;
 	// loop over all tiles from initial position to destination position
-	for (pos line_pos = pos_add(move.from, direction); true;
+	for (pos line_pos = pos_add(move.from, direction);;
 	     line_pos = pos_add(line_pos, direction)) {
 		struct piece *piece_line = get_piece(game, line_pos);
 		if (!piece_line) break;
