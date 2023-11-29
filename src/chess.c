@@ -375,6 +375,7 @@ bool move_piece_internal(struct game *game, move move, struct move_details *deta
 
 bool move_piece_promote_internal(struct game *game, move move, struct move_details *details, enum piece_type type) {
 	if (pos_equal(move.from, move.to)) return false;
+	struct piece *piece_from;
 	DETAILS(details);
 	if (is_legal_move(game, move, details)) {
 		if (details->promotion) {
@@ -383,7 +384,7 @@ bool move_piece_promote_internal(struct game *game, move move, struct move_detai
 				case KNIGHT:
 				case BISHOP:
 				case ROOK:
-					struct piece *piece_from = get_piece(game, move.from);
+					piece_from = get_piece(game, move.from);
 					piece_from->type = type;
 					break;
 				default:
