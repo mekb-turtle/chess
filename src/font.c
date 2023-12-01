@@ -1,9 +1,26 @@
 #include "font.h"
+#ifdef FONTCONFIG
 #include <fontconfig/fontconfig.h>
+#endif
+#ifdef WINDOWSFONT
+#include <windows.h>
+#include <semaphore.h>
+#endif
 #include <stdio.h>
 #include "err.h"
 
+#ifdef WINDOWSFONT
+sem_t callback_semaphore;
+
+int CALLBACK font_callback(ENUMLOGFONTEX* lpelfe, NEWTEXTMETRICEX* lpntme, DWORD FontType, LPARAM lParam) {
+    printf("Font Name: %s\n", lpelfe->elfFullName);
+	sem_post(&callback_semaphore);
+    return 1;
+}
+#endif
+
 char *get_font_file(char *pattern) {
+	#ifdef FONTCONFIG
 	FcPattern *fc_pattern = FcNameParse((const FcChar8 *) pattern);
 	FcConfig *config = FcInitLoadConfigAndFonts();
 	FcConfigSubstitute(config, fc_pattern, FcMatchPattern);
@@ -17,6 +34,22 @@ char *get_font_file(char *pattern) {
 			return (char *) file;
 		}
 	}
+	#endif
+	
+	#ifdef WINDOWSFONT
+	sem_init(&callback_semaphore, 0, 0);
+	
+	HDC hdc = GetDC(NULL);
+	EnumFontFamilies(hdc, NULL, (FONTENUMPROC)font_callback, 0);
+	ReleaseDC(NULL, hdc);
+	
+	printf("waiting...");
+	sem_wait(&callback_semaphore);
+	printf("received...");
+	sem_destroy(&callback_semaphore);
+	
+	
+	#endif
 
 	return NULL;
 }

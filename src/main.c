@@ -1,9 +1,10 @@
 #include <stdio.h>
-#include <err.h>
+#include "err.h"
 #include <stdbool.h>
 #include <getopt.h>
 #include <time.h>
 #include <limits.h>
+#include <math.h>
 
 #include <SDL2/SDL.h>
 #include "./nuklear.h"
@@ -127,7 +128,7 @@ int main(int argc, char *argv[]) {
 	style_board.window.padding.y = 0;
 
 	while (loop) {
-		bool clicked = false; // prevent accidental double clicks
+		bool clicked = false; // prevent clicks from being registered twice
 
 		SDL_Event event;
 
