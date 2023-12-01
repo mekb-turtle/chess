@@ -151,6 +151,10 @@ bool is_checkmate(struct game *game, enum piece_color color) {
 }
 
 bool is_stalemate(struct game *game, enum piece_color color) {
+	// stalemate means we're not in check
+	if (is_check(game, color))
+		return false;
+
 	// loop pieces of player
 	for (intpos x = 0; x < BOARD_W; ++x)
 		for (intpos y = 0; y < BOARD_H; ++y) {
