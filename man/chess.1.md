@@ -7,13 +7,9 @@ date: "chess-INSERT_VERSION_HERE"
 
 **chess** - Simple SDL2 chess program
 
-# SYNOPSIS
-
-**chess** [OPTION]...
-
 # DESCRIPTION
 
-**chess** is a simple chess program written in C using SDL2 and Nuklear. It supports playing vs a friend or an AI.
+A simple chess program written in C using SDL2 and Nuklear. It supports playing vs a friend or an AI.
 
 # OPTIONS
 
