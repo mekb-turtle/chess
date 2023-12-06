@@ -173,6 +173,18 @@ bool is_stalemate(struct game *game, enum piece_color color) {
 	return true;
 }
 
+bool is_insufficient(struct game *game, enum piece_color color) {
+	int pieces[NUM_PIECES] = {0};
+	for (intpos x = 0; x < BOARD_W; ++x)
+		for (intpos y = 0; y < BOARD_H; ++y) {
+			pos piece_position = position(x, y);
+			struct piece *piece = get_piece(game, piece_position);
+			++pieces[piece->type];
+		}
+	// TODO
+	return false;
+}
+
 pos pos_dir(struct game *game, struct piece piece) {
 	return position(0, piece.color ? -1 : 1);
 }
@@ -408,8 +420,15 @@ void check_game_win_condition(struct game *game) {
 	if (is_checkmate(game, BLACK)) game->winner = game->winner == NO_WINNER ? WINNER_WHITE : UNKNOWN;
 
 	if (game->winner != NO_WINNER) return;
-	if (is_stalemate(game, WHITE)) game->winner = STALEMATE;
-	if (is_stalemate(game, BLACK)) game->winner = STALEMATE;
+	if (is_stalemate(game, WHITE) || is_stalemate(game, BLACK)) {
+		game->winner = STALEMATE;
+		return;
+	}
+
+	if (is_insufficient(game, WHITE) || is_insufficient(game, BLACK)) {
+		game->winner = INSUFFICIENT_MATERIAL;
+		return;
+	}
 }
 
 bool move_piece_promote(struct game *game, move move, struct move_details *details, enum piece_type type) {

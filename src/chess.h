@@ -14,8 +14,10 @@ enum winner {
 	NO_WINNER,
 	WINNER_WHITE,
 	WINNER_BLACK,
-	UNKNOWN,
 	STALEMATE,
+	INSUFFICIENT_MATERIAL,
+	DRAW,
+	UNKNOWN,
 };
 
 enum piece_type {
@@ -25,7 +27,8 @@ enum piece_type {
 	ROOK,
 	BISHOP,
 	KNIGHT,
-	PAWN
+	PAWN,
+	NUM_PIECES
 };
 
 struct piece {
@@ -50,16 +53,18 @@ struct move_details {
 	bool check;      // whether we are checking if the king is in check
 	bool capture;    // capturing a piece
 	bool en_passant; // https://chess.com/terms/en-passant
-	bool castle;     // switching around the king and rook
+	bool castle;     // https://chess.com/terms/castling-chess
 	bool promotion;  // promoting a pawn to a queen, knight, bishop, or rook
 };
 
-bool pos_is_valid(pos position);
 void start_game(struct game *game, bool flipped);
+bool pos_is_valid(pos position);
 pos get_view_pos(struct game *game, pos position);
 struct piece *get_piece(struct game *game, pos position);
 bool is_check(struct game *game, enum piece_color color);
 bool is_checkmate(struct game *game, enum piece_color color);
+bool is_stalemate(struct game *game, enum piece_color color);
+bool is_insufficient(struct game *game, enum piece_color color);
 bool is_legal_move(struct game *game, move move, struct move_details *details);
 bool move_piece_promote(struct game *game, move move, struct move_details *details, enum piece_type type);
 bool move_piece(struct game *game, move move, struct move_details *details);
