@@ -169,11 +169,11 @@ int main(int argc, char *argv[]) {
 				nk_layout_space_begin(ctx, NK_STATIC, INT_MAX, INT_MAX);
 				for (int y = 0; y < grid_h; ++y) {
 					for (int x = 0; x < grid_w; ++x) {
+						pos pos = get_view_pos(&game, position(x - board_min.x, board_max.y - y));
+
 						if (x >= board_min.x && x <= board_max.x && y >= board_min.y && y <= board_max.y) {
 							struct nk_rect tile_bounds = nk_rect(grid_item.x * x, grid_item.y * y, grid_item.x, grid_item.y);
 							nk_layout_space_push(ctx, tile_bounds);
-
-							pos pos = get_view_pos(&game, position(x - board_min.x, board_max.y - y));
 
 							struct piece *piece = get_piece(&game, pos);
 
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 								// draw grid labels
 								AXIS_FONT(ctx, main_diagonal_size);
 								char label[3];
-								sprintf(label, x_label_sides ? "%i" : "%c", x_label_sides ? board_max.y - y + 1 : x - board_min.x + 'A');
+								sprintf(label, x_label_sides ? "%i" : "%c", x_label_sides ? pos.y + 1 : pos.x + 'A');
 
 								nk_flags align = 0;
 								if (x_label_sides) {
