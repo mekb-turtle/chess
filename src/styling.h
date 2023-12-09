@@ -8,17 +8,21 @@
 #include "./nuklear.h"
 #include "./chess.h"
 
-#define SET_BUTTON_BG_THEME(button_style, theme_color)                                    \
-	{                                                                                     \
-		button_style.normal.data.color = chess_theme[CHESS_COLOR_##theme_color];          \
-		button_style.hover.data.color = chess_theme[CHESS_COLOR_##theme_color##_HOVER];   \
-		button_style.active.data.color = chess_theme[CHESS_COLOR_##theme_color##_ACTIVE]; \
+#define SET_BUTTON_BG_THEME(button_style, theme_color)                                           \
+	{                                                                                            \
+		button_style.button.normal.data.color = chess_theme[CHESS_COLOR_##theme_color];          \
+		button_style.button.hover.data.color = chess_theme[CHESS_COLOR_##theme_color##_HOVER];   \
+		button_style.button.active.data.color = chess_theme[CHESS_COLOR_##theme_color##_ACTIVE]; \
 	}
-#define SET_BUTTON_FG_THEME(button_style, theme_color)                     \
-	{                                                                      \
-		button_style.text_normal = chess_theme[CHESS_COLOR_##theme_color]; \
-		button_style.text_hover = chess_theme[CHESS_COLOR_##theme_color];  \
-		button_style.text_active = chess_theme[CHESS_COLOR_##theme_color]; \
+#define SET_BUTTON_FG_THEME(button_style, theme_color)                            \
+	{                                                                             \
+		button_style.button.text_normal = chess_theme[CHESS_COLOR_##theme_color]; \
+		button_style.button.text_hover = chess_theme[CHESS_COLOR_##theme_color];  \
+		button_style.button.text_active = chess_theme[CHESS_COLOR_##theme_color]; \
+	}
+#define SET_TEXT_FG_THEME(style, theme_color)                      \
+	{                                                              \
+		style.text.color = chess_theme[CHESS_COLOR_##theme_color]; \
 	}
 
 enum chess_style {

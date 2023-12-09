@@ -59,11 +59,29 @@ void start_game(struct game *game, bool flipped) {
 	}
 }
 
-void add_captured(enum piece_type array[], enum piece_type piece) {
+bool add_captured(struct game *game, struct piece piece) {
+	if (piece.type == NONE) return false;
+
+	enum piece_type(*array)[] = NULL;
+	switch (piece.color) {
+		case WHITE:
+			array = &game->white_pieces_captured;
+			break;
+		case BLACK:
+			array = &game->black_pieces_captured;
+			break;
+	}
+
+	if (!array) return false;
+
 	size_t i;
-	for (i = 0; array[i] != NONE; ++i) {}
-	array[i] = piece;
-	array[i + 1] = NONE;
+	for (i = 0; (*array)[i] != NONE && i < 32; ++i) {}
+	if (i < 32) {
+		(*array)[i] = piece.type;
+		(*array)[i + 1] = NONE;
+		return true;
+	}
+	return false;
 }
 
 bool pos_is_valid(pos position) {
@@ -363,12 +381,17 @@ void make_piece_move(struct game *game, move move, struct move_details details) 
 
 		move.to = pos2;
 	} else {
+		if (piece_to->color != game->turn)
+			add_captured(game, *piece_to);
+
 		copy_piece(piece_from, piece_to);
 		piece_from->type = NONE;
 
 		if (details.en_passant) {
 			// take the other player's pawn
 			struct piece *piece_last_moved = get_piece(game, game->last_move.to);
+			if (piece_last_moved->color != game->turn)
+				add_captured(game, *piece_last_moved);
 			piece_last_moved->type = NONE;
 		}
 	}

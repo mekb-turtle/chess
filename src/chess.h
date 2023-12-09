@@ -22,12 +22,12 @@ enum winner {
 
 enum piece_type {
 	NONE,
-	KING,
-	QUEEN,
-	ROOK,
-	BISHOP,
-	KNIGHT,
 	PAWN,
+	KNIGHT,
+	BISHOP,
+	ROOK,
+	QUEEN,
+	KING,
 	NUM_PIECES
 };
 
@@ -44,8 +44,8 @@ struct game {
 	bool flipped;
 	move last_move;
 	struct piece board[BOARD_W][BOARD_H];
-	enum piece_type white_pieces_captured[20];
-	enum piece_type black_pieces_captured[20];
+	enum piece_type white_pieces_captured[32];
+	enum piece_type black_pieces_captured[32];
 	enum winner winner;
 };
 

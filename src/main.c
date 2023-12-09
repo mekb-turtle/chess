@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
 			                    NK_WINDOW_BACKGROUND | NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR)) {
 				pos board_min = {2, 2};
 				pos board_max = {BOARD_W + 1, BOARD_H + 1};
-				bool white_pieces_captures_done = false, black_pieces_captures_done = false;
+				int white_pieces_captured_i = 0, black_pieces_captured_i = 0;
 				nk_layout_space_begin(ctx, NK_STATIC, INT_MAX, INT_MAX);
 				for (int y = 0; y < grid_h; ++y) {
 					for (int x = 0; x < grid_w; ++x) {
@@ -180,27 +180,27 @@ int main(int argc, char *argv[]) {
 							struct move_details details;
 
 							if (pos_equal_opt1(pos, current_move.from)) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE)
+								SET_BUTTON_BG_THEME(ctx->style, MOVE)
 							} else if (pos_equal_opt1(pos, current_move.to)) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE)
+								SET_BUTTON_BG_THEME(ctx->style, MOVE)
 							} else if (current_move.from.has_value && is_legal_move(&game, movement(current_move.from.value, pos), &details)) {
 								if (details.capture) {
-									SET_BUTTON_BG_THEME(ctx->style.button, MOVE_CAPTURE)
+									SET_BUTTON_BG_THEME(ctx->style, MOVE_CAPTURE)
 								} else {
-									SET_BUTTON_BG_THEME(ctx->style.button, MOVE_AVAILABLE)
+									SET_BUTTON_BG_THEME(ctx->style, MOVE_AVAILABLE)
 								}
 							} else if (game.started && (pos_equal(game.last_move.to, pos) || pos_equal(game.last_move.from, pos))) {
-								SET_BUTTON_BG_THEME(ctx->style.button, MOVE_LAST)
+								SET_BUTTON_BG_THEME(ctx->style, MOVE_LAST)
 							} else if ((pos.x + pos.y) & 1) {
-								SET_BUTTON_BG_THEME(ctx->style.button, 2)
+								SET_BUTTON_BG_THEME(ctx->style, 2)
 							} else {
-								SET_BUTTON_BG_THEME(ctx->style.button, 1)
+								SET_BUTTON_BG_THEME(ctx->style, 1)
 							}
 
 							if (piece->color == BLACK) {
-								SET_BUTTON_FG_THEME(ctx->style.button, PIECE_BLACK)
+								SET_BUTTON_FG_THEME(ctx->style, PIECE_BLACK)
 							} else {
-								SET_BUTTON_FG_THEME(ctx->style.button, PIECE_WHITE)
+								SET_BUTTON_FG_THEME(ctx->style, PIECE_WHITE)
 							}
 
 							CHESS_FONT(ctx, main_diagonal_size);
@@ -240,8 +240,8 @@ int main(int argc, char *argv[]) {
 
 							bool x_label_sides = (x == board_min.x - 1 || x == board_max.x + 1) && y >= board_min.y && y <= board_max.y,
 							     y_label_sides = (y == board_min.y - 1 || y == board_max.y + 1) && x >= board_min.x && x <= board_max.x,
-							     x_captured_sides = x == board_min.x - 2,
-							     y_captured_sides = x == board_max.x + 2;
+							     captured1_sides = x == board_min.x - 2,
+							     captured2_sides = x == board_max.x + 2;
 
 							if (x_label_sides || y_label_sides) {
 								bounds.x += margin;
@@ -265,24 +265,24 @@ int main(int argc, char *argv[]) {
 								}
 
 								nk_label(ctx, label, align);
-							} else if (x_captured_sides || y_captured_sides) {
+							} else if (captured1_sides || captured2_sides) {
 								nk_layout_space_push(ctx, bounds);
 								CHESS_FONT(ctx, main_diagonal_size);
 
-								if (x_captured_sides && !white_pieces_captures_done) {
-									SET_BUTTON_FG_THEME(ctx->style.button, PIECE_WHITE)
-									enum piece_type piece = game.white_pieces_captured[y];
-									if (piece == NONE)
-										white_pieces_captures_done = true;
-									else
+								if (captured1_sides && white_pieces_captured_i == y) {
+									SET_TEXT_FG_THEME(ctx->style, PIECE_WHITE)
+									enum piece_type piece = game.white_pieces_captured[white_pieces_captured_i];
+									if (piece != NONE) {
 										draw_piece(ctx, piece, WHITE, false);
-								} else if (y_captured_sides && !black_pieces_captures_done) {
-									SET_BUTTON_FG_THEME(ctx->style.button, PIECE_BLACK)
-									enum piece_type piece = game.black_pieces_captured[y];
-									if (piece == NONE)
-										black_pieces_captures_done = true;
-									else
+										++white_pieces_captured_i;
+									}
+								} else if (captured2_sides && black_pieces_captured_i == y) {
+									SET_TEXT_FG_THEME(ctx->style, PIECE_BLACK)
+									enum piece_type piece = game.black_pieces_captured[black_pieces_captured_i];
+									if (piece != NONE) {
 										draw_piece(ctx, piece, BLACK, false);
+										++black_pieces_captured_i;
+									}
 								}
 
 								ctx->style = style_board;
@@ -367,15 +367,15 @@ int main(int argc, char *argv[]) {
 						struct piece *piece = get_piece(&game, current_move.from.value);
 
 						if (piece->color == BLACK) {
-							SET_BUTTON_FG_THEME(ctx->style.button, PIECE_BLACK)
+							SET_BUTTON_FG_THEME(ctx->style, PIECE_BLACK)
 						} else {
-							SET_BUTTON_FG_THEME(ctx->style.button, PIECE_WHITE)
+							SET_BUTTON_FG_THEME(ctx->style, PIECE_WHITE)
 						}
 
 						if ((current_move.to.value.x + current_move.to.value.y) & 1) {
-							SET_BUTTON_BG_THEME(ctx->style.button, 2)
+							SET_BUTTON_BG_THEME(ctx->style, 2)
 						} else {
-							SET_BUTTON_BG_THEME(ctx->style.button, 1)
+							SET_BUTTON_BG_THEME(ctx->style, 1)
 						}
 
 						CHESS_FONT(ctx, main_diagonal_size);
