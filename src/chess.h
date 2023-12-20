@@ -10,14 +10,13 @@ enum piece_color {
 	BLACK
 };
 
-enum winner {
-	NO_WINNER,
+enum game_result {
+	IN_PROGRESS,
 	WINNER_WHITE,
 	WINNER_BLACK,
 	STALEMATE,
 	INSUFFICIENT_MATERIAL,
-	DRAW,
-	UNKNOWN,
+	UNKNOWN_RESULT,
 };
 
 enum piece_type {
@@ -46,7 +45,7 @@ struct game {
 	struct piece board[BOARD_W][BOARD_H];
 	enum piece_type white_pieces_captured[32];
 	enum piece_type black_pieces_captured[32];
-	enum winner winner;
+	enum game_result result;
 };
 
 struct move_details {
@@ -64,7 +63,7 @@ struct piece *get_piece(struct game *game, pos position);
 bool is_check(struct game *game, enum piece_color color);
 bool is_checkmate(struct game *game, enum piece_color color);
 bool is_stalemate(struct game *game, enum piece_color color);
-bool is_insufficient(struct game *game, enum piece_color color);
+bool is_insufficient_material(struct game *game, enum piece_color color);
 bool is_legal_move(struct game *game, move move, struct move_details *details);
 bool move_piece_promote(struct game *game, move move, struct move_details *details, enum piece_type type);
 bool move_piece(struct game *game, move move, struct move_details *details);

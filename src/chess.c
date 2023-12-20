@@ -10,7 +10,7 @@
 void start_game(struct game *game, bool flipped) {
 	game->flipped = flipped;
 	game->turn = WHITE;
-	game->winner = NONE;
+	game->result = IN_PROGRESS;
 	game->started = false;
 
 	// last move
@@ -28,9 +28,10 @@ void start_game(struct game *game, bool flipped) {
 			piece->type = NONE;
 			piece->turns = 0;
 
-			// set color and which direction pawns move
+			// set color of piece
 			piece->color = y < 4 ? WHITE : BLACK;
 
+			// set type of piece
 			if (y == 1 || y == BOARD_H - 2) {
 				piece->type = PAWN;
 			} else if (y == 0 || y == BOARD_H - 1) {
@@ -102,7 +103,7 @@ struct piece *get_piece(struct game *game, pos position) {
 	return &game->board[position.x][position.y];
 }
 
-bool is_piece(struct piece piece, enum piece_color color) {
+bool piece_is_color(struct piece piece, enum piece_color color) {
 	return piece.type != NONE && piece.color == color;
 }
 
@@ -191,7 +192,7 @@ bool is_stalemate(struct game *game, enum piece_color color) {
 	return true;
 }
 
-bool is_insufficient(struct game *game, enum piece_color color) {
+bool is_insufficient_material(struct game *game, enum piece_color color) {
 	int pieces[NUM_PIECES] = {0};
 	for (intpos x = 0; x < BOARD_W; ++x)
 		for (intpos y = 0; y < BOARD_H; ++y) {
@@ -237,7 +238,7 @@ bool is_legal_move_internal(struct game *game, move move, struct move_details *d
 	pos abs_distance = pos_abs(distance);              // absolute value
 	pos direction = pos_direction(move.from, move.to); // get direction
 
-	if (is_piece(*piece_to, piece_from->color)) {
+	if (piece_is_color(*piece_to, piece_from->color)) {
 		// castling
 		if (piece_from->type == KING && piece_to->type == ROOK)
 			if (piece_from->turns == 0 && piece_to->turns == 0)            // cannot castle if the king or rook has moved
@@ -327,7 +328,7 @@ validate_move:
 }
 
 bool is_legal_move(struct game *game, move move, struct move_details *details) {
-	if (game->winner != NO_WINNER) return false;
+	if (game->result != IN_PROGRESS) return false;
 
 	struct piece *piece_from = get_piece(game, move.from);
 	if (!piece_from) return false;
@@ -438,18 +439,18 @@ bool move_piece_promote_internal(struct game *game, move move, struct move_detai
 
 //TODO: other ways of a draw
 void check_game_win_condition(struct game *game) {
-	if (game->winner != NO_WINNER) return;
-	if (is_checkmate(game, WHITE)) game->winner = WINNER_BLACK;
-	if (is_checkmate(game, BLACK)) game->winner = game->winner == NO_WINNER ? WINNER_WHITE : UNKNOWN;
+	if (game->result != IN_PROGRESS) return;
+	if (is_checkmate(game, WHITE)) game->result = WINNER_BLACK;
+	if (is_checkmate(game, BLACK)) game->result = game->result == IN_PROGRESS ? WINNER_WHITE : UNKNOWN_RESULT;
 
-	if (game->winner != NO_WINNER) return;
+	if (game->result != IN_PROGRESS) return;
 	if (is_stalemate(game, WHITE) || is_stalemate(game, BLACK)) {
-		game->winner = STALEMATE;
+		game->result = STALEMATE;
 		return;
 	}
 
-	if (is_insufficient(game, WHITE) || is_insufficient(game, BLACK)) {
-		game->winner = INSUFFICIENT_MATERIAL;
+	if (is_insufficient_material(game, WHITE) || is_insufficient_material(game, BLACK)) {
+		game->result = INSUFFICIENT_MATERIAL;
 		return;
 	}
 }

@@ -23,7 +23,7 @@ bool pos_equal_opt2(opt_pos a, opt_pos b) {
 intpos intpos_sign(intpos position) {
 	if (position < -1) position = -1;
 	if (position > 1) position = 1;
-	return position;
+	return 0;
 }
 
 pos pos_sign(pos position) {
@@ -46,7 +46,7 @@ pos pos_scale(pos a, intpos t) {
 
 pos pos_direction(pos a, pos b) {
 	// calculate the direction of the distance
-	// returns 0,0 if the two positions aren't in a straight line from each other (either horizontally, vertically or diagonally)
+	// returns 0,0 if the two positions aren't in a straight line from each other (either horizontally, vertically, or diagonally)
 	pos distance = pos_subtract(b, a);
 	if (distance.x == distance.y || distance.x == -distance.y ||
 	    distance.x == 0 || distance.y == 0) {
