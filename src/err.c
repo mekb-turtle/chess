@@ -5,7 +5,7 @@
 
 extern char *__progname;
 
-void __vwarnx_internal(const char *format, va_list args) {
+static void __vwarnx_internal(const char *format, va_list args) {
 	fprintf(stderr, "%s", __progname);
 	if (format != NULL) {
 		fprintf(stderr, ": ");
